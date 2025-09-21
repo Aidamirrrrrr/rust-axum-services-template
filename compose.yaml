@@ -1,0 +1,39 @@
+services:
+  auth_service:
+    build:
+      context: ./auth_service
+      dockerfile: ./Dockerfile
+    environment:
+      DATABASE_URL: postgres://${AUTH_POSTGRES_USER}:${AUTH_POSTGRES_PASSWORD}@auth_service_db:5432/${AUTH_POSTGRES_DB}
+      SERVER_HOST: ${AUTH_SERVER_HOST}
+      SERVER_PORT: ${AUTH_SERVER_PORT}
+      RUST_LOG: info
+    depends_on:
+      auth_service_db:
+        condition: service_healthy
+    ports:
+      - "${AUTH_SERVER_PORT}:${AUTH_SERVER_PORT}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${AUTH_SERVER_PORT}/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  auth_service_db:
+    image: postgres:17.6
+    environment:
+      POSTGRES_USER: ${AUTH_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${AUTH_POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_POSTGRES_USER} -d ${AUTH_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
