@@ -1,5 +1,4 @@
-use crate::common::error::AppError;
-use crate::common::state::AppState;
+use crate::common::{error::AppError, state::AppState};
 use argon2::{
     Argon2,
     password_hash::{PasswordHasher, SaltString},
@@ -12,10 +11,8 @@ use axum::{
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::OwnedSemaphorePermit;
-use tokio::{task, time};
+use std::{sync::Arc, time::Duration};
+use tokio::{sync::OwnedSemaphorePermit, task, time};
 
 #[derive(Deserialize)]
 pub struct RegisterRequest {
@@ -79,10 +76,10 @@ pub async fn register_handler(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        if let sqlx::Error::Database(db_err) = &e {
-            if db_err.constraint() == Some("users_username_key") {
-                return AppError::Conflict("Username already exists".into());
-            }
+        if let sqlx::Error::Database(db_err) = &e
+            && db_err.constraint() == Some("users_username_key")
+        {
+            return AppError::Conflict("Username already exists".into());
         }
         AppError::Internal("Database error".into())
     })?;

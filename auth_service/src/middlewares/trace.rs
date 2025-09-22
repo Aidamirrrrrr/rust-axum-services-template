@@ -1,5 +1,7 @@
-use tower_http::classify::{ServerErrorsAsFailures, SharedClassifier};
-use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tower_http::{
+    classify::{ServerErrorsAsFailures, SharedClassifier},
+    trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
+};
 use tracing::Level;
 
 pub type HttpTraceLayer = TraceLayer<SharedClassifier<ServerErrorsAsFailures>>;

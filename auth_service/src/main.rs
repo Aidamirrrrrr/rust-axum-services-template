@@ -1,24 +1,15 @@
+mod common;
 mod config;
-mod common {
-    pub mod error;
-    pub mod state;
-}
-mod middlewares {
-    pub mod cors;
-    pub mod trace;
-}
-mod routes {
-    pub mod health;
-    pub mod register;
-}
-use crate::middlewares::cors::make_cors_layer;
-use crate::middlewares::trace::make_trace_layer;
-use crate::routes::health::health_handler;
-use crate::routes::register::register_handler;
-use axum::Router;
-use axum::routing::{any, get, post};
-use common::error::AppError;
-use common::state::AppState;
+mod middlewares;
+mod routes;
+
+use crate::common::{error::AppError, state::AppState};
+use crate::middlewares::{cors::make_cors_layer, trace::make_trace_layer};
+use crate::routes::{health::health_handler, register::register_handler};
+use axum::{
+    Router,
+    routing::{any, get, post},
+};
 use config::Config;
 use sqlx::postgres::PgPoolOptions;
 use std::{net::SocketAddr, sync::Arc};
