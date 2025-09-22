@@ -1,5 +1,5 @@
-use tower_http::cors::{CorsLayer, Any, AllowOrigin};
 use axum::http;
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 pub fn make_cors_layer(origins: &str) -> CorsLayer {
     if origins.trim() == "*" {

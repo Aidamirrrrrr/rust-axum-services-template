@@ -1,19 +1,21 @@
+use crate::common::error::AppError;
+use crate::common::state::AppState;
+use argon2::{
+    Argon2,
+    password_hash::{PasswordHasher, SaltString},
+};
 use axum::{
-    extract::{State, Json},
+    extract::{Json, State},
     http::StatusCode,
     response::IntoResponse,
 };
-use crate::state::AppState;
-use argon2::{Argon2, password_hash::{SaltString, PasswordHasher}};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
-use crate::error::AppError;
 
 use std::sync::Arc;
-use tokio::{task, time};
-use tokio::sync::OwnedSemaphorePermit;
 use std::time::Duration;
+use tokio::sync::OwnedSemaphorePermit;
+use tokio::{task, time};
 
 #[derive(Deserialize)]
 pub struct RegisterRequest {
@@ -27,12 +29,15 @@ pub struct RegisterResponse {
     pub username: String,
 }
 
-async fn acquire_permit_with_timeout(semaphore: Arc<tokio::sync::Semaphore>) -> Result<OwnedSemaphorePermit, AppError> {
-    let timeout_dur = Duration::from_secs(10); // may be overridden in config
+async fn acquire_permit_with_timeout(
+    semaphore: Arc<tokio::sync::Semaphore>,
+) -> Result<OwnedSemaphorePermit, AppError> {
+    let timeout_dur = Duration::from_secs(10); // TODO: may be overridden in config
     match time::timeout(timeout_dur, semaphore.acquire_owned()).await {
-        Ok(permit_res) => permit_res
-            .map_err(|_| AppError::Internal("Service is shutting down".into())),
-        Err(_) => Err(AppError::Internal("Server is busy, try later".into())), 
+        Ok(permit_res) => {
+            permit_res.map_err(|_| AppError::Internal("Service is shutting down".into()))
+        }
+        Err(_) => Err(AppError::Internal("Server is busy, try later".into())),
     }
 }
 
@@ -58,19 +63,19 @@ pub async fn register_handler(
     })
     .await
     .map_err(|_| AppError::Internal("Hashing task panicked".into()))?
-    .map_err(|_| AppError::Internal("Password hashing failed".into()))?; 
+    .map_err(|_| AppError::Internal("Password hashing failed".into()))?;
 
     drop(permit);
 
-    let row = sqlx::query(
+    let row = sqlx::query!(
         r#"
         INSERT INTO users (username, password_hash)
         VALUES ($1, $2)
         RETURNING id, username
-        "#
+        "#,
+        payload.username,
+        password_hash
     )
-    .bind(&payload.username)
-    .bind(&password_hash)
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
@@ -83,8 +88,8 @@ pub async fn register_handler(
     })?;
 
     let resp = RegisterResponse {
-        id: row.get("id"),
-        username: row.get("username"),
+        id: row.id,
+        username: row.username,
     };
 
     Ok((StatusCode::CREATED, axum::Json(resp)))
